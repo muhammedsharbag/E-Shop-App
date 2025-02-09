@@ -5,12 +5,12 @@ const dotenv = require("dotenv");
 const morgan = require("morgan");
 
 dotenv.config({ path: "config.env" });
+const compression = require('compression')
+const cors = require("cors")
 const ApiError = require("./utils/apiError");
 const globalError = require("./middlewares/errorMiddleware");
 const dbConnection = require("./config/database");
-const mountRoutes  = require("./routes")
-const cors = require("cors")
-const compression = require('compression')
+const mountRoutes  = require("./routes/mountRoutes")
 
 dbConnection();
 
