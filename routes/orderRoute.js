@@ -1,14 +1,14 @@
 const express = require("express");
 
 const authService = require("../services/authService");
-const { createCashOrder, findAllOrders, findSpecificOrder, filterOrderForLoggedUser, updateOrderStatusToPaid, updateOrderStatusToDelivered, checkoutSession } = require("../services/orderService");
+const { createCashOrder, findAllOrders, findSpecificOrder, filterOrderForLoggedUser, updateOrderToPaid, updateOrderToDelivered, checkoutSession } = require("../services/orderService");
 
 const router = express.Router();
 router.use(authService.protect);
 
 router.route("/:cartId").post(authService.allowedTo("user"),createCashOrder)
-router.put("/:orderId/pay",authService.allowedTo("admin","manager"),updateOrderStatusToPaid)
-router.put("/:orderId/deliver",authService.allowedTo("admin","manager"),updateOrderStatusToDelivered)
+router.put("/:orderId/pay",authService.allowedTo("admin","manager"),updateOrderToPaid)
+router.put("/:orderId/deliver",authService.allowedTo("admin","manager"),updateOrderToDelivered)
 
 
 router.get("/",authService.allowedTo("user","admin","manager"),filterOrderForLoggedUser,findAllOrders)
