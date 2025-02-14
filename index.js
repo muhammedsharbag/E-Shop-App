@@ -25,7 +25,7 @@ app.options('*',cors())
 // compress all responses
 app.use(compression())
 //checkout webhook
-app.post('/webhook-checkout',express.row({type:'application/json'}),webhookCheckout)
+app.post('/webhook-checkout',express.raw({type:'application/json'}),webhookCheckout)
 app.use(express.static(path.join(__dirname, "uploads")));
 const logFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
 app.use(morgan(logFormat));
