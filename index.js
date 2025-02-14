@@ -10,7 +10,8 @@ const cors = require("cors")
 const ApiError = require("./utils/apiError");
 const globalError = require("./middlewares/errorMiddleware");
 const dbConnection = require("./config/database");
-const mountRoutes  = require("./routes/mountRoutes")
+const mountRoutes  = require("./routes/mountRoutes");
+const { webhookCheckout } = require("./services/orderService");
 
 dbConnection();
 
@@ -23,6 +24,8 @@ app.use(cors());
 app.options('*',cors())
 // compress all responses
 app.use(compression())
+//checkout webhook
+app.post('/webhook-checkout',express.row({type:'application/json'}),webhookCheckout)
 app.use(express.static(path.join(__dirname, "uploads")));
 const logFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
 app.use(morgan(logFormat));
