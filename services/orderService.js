@@ -74,7 +74,7 @@ exports.findSpecificOrder = factory.getOne(Order);
 // @route   PUT /api/v1/orders/:id/pay
 // @access  Protected/Admin-Manager
 exports.updateOrderToPaid = asyncHandler(async (req, res, next) => {
-  const order = await Order.findById({order:req.params.id});
+  const order = await Order.findById(req.params.id);
   if (!order) {
     return next(
       new ApiError(
