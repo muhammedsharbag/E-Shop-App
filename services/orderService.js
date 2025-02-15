@@ -84,7 +84,7 @@ exports.updateOrderToPaid = asyncHandler(async (req, res, next) => {
 
   const updatedOrder = await order.save();
 
-  res.status(200).json({ status: 'success', data: updatedOrder });
+  res.status(200).json({ status:'success', data: updatedOrder });
 });
 
 // @desc    Update order delivered status
