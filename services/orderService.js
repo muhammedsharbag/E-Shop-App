@@ -8,29 +8,9 @@ const Product = require('../models/productModel');
 const Cart = require('../models/cartModel');
 const Order = require('../models/orderModel');
 
-/**
- * Helper: Update product stock and sold count based on cart items.
- */
-const updateProductStock = async (cartItems) => {
-  const bulkOption = cartItems.map((item) => ({
-    updateOne: {
-      filter: { _id: item.product },
-      update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
-    },
-  }));
-  return await Product.bulkWrite(bulkOption, {});
-};
-
-/**
- * Helper: Clear cart based on cartId.
- */
-const clearCart = async (cartId) => await Cart.findByIdAndDelete(cartId);
-
-/**
- * @desc    create cash order
- * @route   POST /api/v1/orders/cartId
- * @access  Protected/User
- */
+// @desc    create cash order
+// @route   POST /api/v1/orders/cartId
+// @access  Protected/User
 exports.createCashOrder = asyncHandler(async (req, res, next) => {
   // app settings
   const taxPrice = 0;
@@ -61,10 +41,16 @@ exports.createCashOrder = asyncHandler(async (req, res, next) => {
 
   // 4) After creating order, decrement product quantity, increment product sold
   if (order) {
-    await updateProductStock(cart.cartItems);
+    const bulkOption = cart.cartItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.product },
+        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
+      },
+    }));
+    await Product.bulkWrite(bulkOption, {});
 
     // 5) Clear cart depend on cartId
-    await clearCart(req.params.cartId);
+    await Cart.findByIdAndDelete(req.params.cartId);
   }
 
   res.status(201).json({ status: 'success', data: order });
@@ -213,11 +199,12 @@ const createCardOrder = async (session) => {
   }
 };
 
+
 // // @desc    This webhook will run when stripe payment success paid
 // // @route   POST /webhook-checkout
 // // @access  Protected/User
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
-  const sig = req.headers['stripe-signature'];
+const sig = req.headers['stripe-signature'];
 
   let event;
 
@@ -231,8 +218,9 @@ exports.webhookCheckout = asyncHandler(async (req, res, next) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
   if (event.type === 'checkout.session.completed') {
+  
     // Create card order
-    await createCardOrder(event.data.object);
+    await  createCardOrder(event.data.object);
   }
 
   res.status(200).json({ received: true });
