@@ -220,7 +220,7 @@ const sig = req.headers['stripe-signature'];
   if (event.type === 'checkout.session.completed') {
   
     // Create card order
-    createCardOrder(event.data.object);
+    await  createCardOrder(event.data.object);
   }
 
   res.status(200).json({ received: true });
