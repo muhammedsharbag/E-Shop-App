@@ -218,9 +218,9 @@ const sig = req.headers['stripe-signature'];
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
   if (event.type === 'checkout.session.completed') {
-   
+  
     // Create card order
-     createCardOrder(event.data.object);
+    createCardOrder(event.data.object);
   }
 
   res.status(200).json({ received: true });
