@@ -74,7 +74,7 @@ exports.updateOrderToPaid = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.id);
   if (!order) {
     return next(
-      new ApiError(`There is no order with the ID: ${req.params.id}`, 404)
+      new ApiError(`There is no order with the ID: ${req.params.orderId}`, 404)
     );
   }
 
@@ -94,7 +94,7 @@ exports.updateOrderToDelivered = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.id);
   if (!order) {
     return next(
-      new ApiError(`There is no order with the ID: ${req.params.id}`, 404)
+      new ApiError(`There is no order with the ID: ${req.params.orderId}`, 404)
     );
   }
 
