@@ -65,7 +65,7 @@ exports.filterOrderForLoggedUser = asyncHandler(async (req, res, next) => {
 // @access  Protected/User-Admin-Manager
 exports.findAllOrders = factory.getAll(Order);
 
-// @desc    Get all orders
+// @desc    Get specific order
 // @route   POST /api/v1/orders
 // @access  Protected/User-Admin-Manager
 exports.findSpecificOrder = factory.getOne(Order);
@@ -74,7 +74,7 @@ exports.findSpecificOrder = factory.getOne(Order);
 // @route   PUT /api/v1/orders/:id/pay
 // @access  Protected/Admin-Manager
 exports.updateOrderToPaid = asyncHandler(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById({order:req.params.id});
   if (!order) {
     return next(
       new ApiError(
