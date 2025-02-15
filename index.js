@@ -1,4 +1,5 @@
 const path = require("path");
+const bodyParser = require('body-parser');
 
 const express = require("express");
 const dotenv = require("dotenv");
@@ -25,7 +26,11 @@ app.options('*',cors())
 // compress all responses
 app.use(compression())
 //checkout webhook
-app.post('/webhook-checkout',express.raw({type:'application/json'}),webhookCheckout)
+app.post(
+  '/webhook-checkout',
+  bodyParser.raw({ type: 'application/json' }),
+  webhookCheckout
+);
 app.use(express.static(path.join(__dirname, "uploads")));
 const logFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
 app.use(morgan(logFormat));
