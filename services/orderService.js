@@ -7,6 +7,7 @@ const User = require('../models/userModel');
 const Product = require('../models/productModel');
 const Cart = require('../models/cartModel');
 const Order = require('../models/orderModel');
+const { default: mongoose } = require('mongoose');
 
 // @desc    Create a cash order
 // @route   POST /api/v1/orders/:cartId
@@ -18,8 +19,8 @@ exports.createCashOrder = asyncHandler(async (req, res, next) => {
 
   // 1) Get cart by ID
   const cart = await Cart.findById(req.params.cartId);
-  if (!cart) {
-    return next(new ApiError(`No cart found with ID ${req.params.cartId}`, 404));
+   if (!cart) {
+     return next(new ApiError(`No cart found with ID ${req.params.cartId}`, 404));
   }
 
   // 2) Calculate order total
@@ -65,13 +66,28 @@ exports.findAllOrders = factory.getAll(Order);
 // @desc    Get specific order
 // @route   GET /api/v1/orders/:id
 // @access  Protected/User-Admin-Manager
-exports.findSpecificOrder = factory.getOne(Order);
+exports.findSpecificOrder = asyncHandler(async (req, res, next) => {
+  const { orderId } = req.params;
+
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    return next(new ApiError(`Invalid order ID format: ${orderId}`, 400));
+  }
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return next(new ApiError(`There is no order with the ID: ${orderId}`, 404));
+  }
+
+  res.status(200).json({ status: 'success', data: order });
+});
 
 // @desc    Update order paid status to paid
 // @route   PUT /api/v1/orders/:id/pay
 // @access  Protected/Admin-Manager
 exports.updateOrderToPaid = asyncHandler(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.orderId);
   if (!order) {
     return next(
       new ApiError(`There is no order with the ID: ${req.params.orderId}`, 404)
@@ -91,20 +107,21 @@ exports.updateOrderToPaid = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/v1/orders/:id/deliver
 // @access  Protected/Admin-Manager
 exports.updateOrderToDelivered = asyncHandler(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.orderId);
+  
   if (!order) {
     return next(
       new ApiError(`There is no order with the ID: ${req.params.orderId}`, 404)
     );
   }
 
-  // Update order to delivered
+  // Update order to Delivered
   order.isDelivered = true;
   order.deliveredAt = Date.now();
 
   const updatedOrder = await order.save();
 
-  res.status(200).json({ status: 'success', data: updatedOrder });
+  res.status(200).json({ status:'success', data: updatedOrder });
 });
 
 // @desc    Get Stripe checkout session and send it as response
