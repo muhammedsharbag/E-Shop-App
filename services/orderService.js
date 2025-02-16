@@ -169,60 +169,59 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 
 // Helper function to create a card order after successful payment
 const createCardOrder = async (session) => {
-  const cartId = session.client_reference_id;
-  // Parse the metadata (shippingAddress is stored as a string)
-  const shippingAddress = session.metadata && session.metadata.shippingAddress 
-    ? JSON.parse(session.metadata.shippingAddress)
-    : {};
-  const orderPrice = session.amount_total / 100; // Convert from cents
+  try {
+    const cartId = session.client_reference_id;
+    const shippingAddress = session.metadata?.shippingAddress
+      ? JSON.parse(session.metadata.shippingAddress)
+      : {};
+    const orderPrice = session.amount_total / 100; // Convert from cents
 
-  const cart = await Cart.findById(cartId);
-  if (!cart) return;
+    const cart = await Cart.findById(cartId);
+    if (!cart) {
+      console.error(`Cart not found: ${cartId}`);
+      return;
+    }
 
-  const user = await User.findOne({ email: session.customer_email });
-  if (!user) return;
+    const user = await User.findOne({ email: session.customer_email });
+    if (!user) {
+      console.error(`User not found for email: ${session.customer_email}`);
+      return;
+    }
 
-  // Create order with paymentMethodType: 'card'
-  const order = await Order.create({
-    user: user._id,
-    cartItems: cart.cartItems,
-    shippingAddress,
-    totalOrderPrice: orderPrice,
-    isPaid: true,
-    paidAt: Date.now(),
-    paymentMethodType: 'card',
-  });
+    const order = await Order.create({
+      user: user._id,
+      cartItems: cart.cartItems,
+      shippingAddress,
+      totalOrderPrice: orderPrice,
+      isPaid: true,
+      paidAt: Date.now(),
+      paymentMethodType: 'card',
+    });
 
-  // Update product stock and sold count
-  if (order) {
-    const bulkOption = cart.cartItems.map((item) => ({
-      updateOne: {
-        filter: { _id: item.product },
-        update: { $inc: { quantity: -item.quantity, sold: item.quantity } },
-      },
-    }));
-    await Product.bulkWrite(bulkOption, {});
-
-    // Clear cart
-    await Cart.findByIdAndDelete(cartId);
+    if (order) {
+      const bulkOption = cart.cartItems.map((item) => ({
+        updateOne: {
+          filter: { _id: item.product },
+          update: { $inc: { quantity: -item.quantity, sold: item.quantity } },
+        },
+      }));
+      await Product.bulkWrite(bulkOption, {});
+      await Cart.findByIdAndDelete(cartId);
+    }
+  } catch (error) {
+    console.error("Error in createCardOrder:", error);
   }
 };
 
-// @desc    Stripe Webhook to handle successful payments
-// @route   POST /webhook-checkout
-// @access  Public
+// Stripe Webhook Handler
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   const sig = req.headers['stripe-signature'];
-
   let event;
+
   try {
-    // IMPORTANT: Use the raw body, not the parsed JSON body, for Stripe webhook verification.
-    event = stripe.webhooks.constructEvent(
-      req.rawBody, // Ensure that your Express app uses the raw body for this route.
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
