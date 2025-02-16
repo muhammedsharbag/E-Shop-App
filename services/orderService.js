@@ -169,47 +169,36 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 
 // Helper function to create a card order after successful payment
 const createCardOrder = async (session) => {
-  try {
-    const cartId = session.client_reference_id;
-    const shippingAddress = session.metadata?.shippingAddress
-      ? JSON.parse(session.metadata.shippingAddress)
-      : {};
-    const orderPrice = session.amount_total / 100; // Convert from cents
+  const cartId = session.client_reference_id;
+  const shippingAddress = session.metadata;
+  const oderPrice = session.amount_total / 100;
 
-    const cart = await Cart.findById(cartId);
-    if (!cart) {
-      console.error(`Cart not found: ${cartId}`);
-      return;
-    }
+  const cart = await Cart.findById(cartId);
+  const user = await User.findOne({ email: session.customer_email });
 
-    const user = await User.findOne({ email: session.customer_email });
-    if (!user) {
-      console.error(`User not found for email: ${session.customer_email}`);
-      return;
-    }
+  // 3) Create order with default paymentMethodType card
+  const order = await Order.create({
+    user: user._id,
+    cartItems: cart.cartItems,
+    shippingAddress,
+    totalOrderPrice: oderPrice,
+    isPaid: true,
+    paidAt: Date.now(),
+    paymentMethodType: 'card',
+  });
 
-    const order = await Order.create({
-      user: user._id,
-      cartItems: cart.cartItems,
-      shippingAddress,
-      totalOrderPrice: orderPrice,
-      isPaid: true,
-      paidAt: Date.now(),
-      paymentMethodType: 'card',
-    });
+  // 4) After creating order, decrement product quantity, increment product sold
+  if (order) {
+    const bulkOption = cart.cartItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.product },
+        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
+      },
+    }));
+    await Product.bulkWrite(bulkOption, {});
 
-    if (order) {
-      const bulkOption = cart.cartItems.map((item) => ({
-        updateOne: {
-          filter: { _id: item.product },
-          update: { $inc: { quantity: -item.quantity, sold: item.quantity } },
-        },
-      }));
-      await Product.bulkWrite(bulkOption, {});
-      await Cart.findByIdAndDelete(cartId);
-    }
-  } catch (error) {
-    console.error("Error in createCardOrder:", error);
+    // 5) Clear cart depend on cartId
+    await Cart.findByIdAndDelete(cartId);
   }
 };
 
