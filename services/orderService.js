@@ -128,43 +128,58 @@ exports.updateOrderToDelivered = asyncHandler(async (req, res, next) => {
 // @route   GET /api/v1/orders/checkout-session/:cartId
 // @access  Protected/User
 exports.checkoutSession = asyncHandler(async (req, res, next) => {
-  const taxPrice = 0;
-  const shippingPrice = 0;
+  try {
+    const taxPrice = 0;
+    const shippingPrice = 0;
 
-  // 1) Get cart by ID
-  const cart = await Cart.findById(req.params.cartId);
-  if (!cart) {
-    return next(new ApiError(`No cart found with ID ${req.params.cartId}`, 404));
-  }
+    // Validate cartId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.cartId)) {
+      return next(new ApiError('Invalid cart ID format', 400));
+    }
 
-  // 2) Calculate order total
-  const cartPrice = cart.totalPriceAfterDiscount || cart.totalCartPrice;
-  const totalOrderPrice = cartPrice + taxPrice + shippingPrice;
+    // 1) Get cart by ID
+    const cart = await Cart.findById(req.params.cartId);
+    if (!cart) {
+      return next(new ApiError(`No cart found with ID ${req.params.cartId}`, 404));
+    }
 
-  // 3) Create Stripe checkout session
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    mode: 'payment',
-    line_items: [
-      {
-        price_data: {
-          currency: 'egp',
-          unit_amount: totalOrderPrice * 100, // Convert to smallest currency unit (e.g., cents)
-          product_data: {
-            name: req.user.name,
+    // 2) Calculate order total
+    const cartPrice = cart.totalPriceAfterDiscount || cart.totalCartPrice || 0;
+    const totalOrderPrice = cartPrice + taxPrice + shippingPrice;
+
+    if (totalOrderPrice <= 0) {
+      return next(new ApiError('Total order price must be greater than zero', 400));
+    }
+
+    // 3) Create Stripe checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [
+        {
+          price_data: {
+            currency: 'egp',
+            unit_amount: totalOrderPrice * 100, // Convert to smallest currency unit (e.g., cents)
+            product_data: {
+              name: req.user.name || 'Customer',
+            },
           },
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      success_url: `${req.protocol}://${req.get('host')}/orders`,
+      cancel_url: `${req.protocol}://${req.get('host')}/cart`,
+      customer_email: req.user.email,
+      client_reference_id: req.params.cartId,
+      metadata: {
+        shippingAddress: JSON.stringify(req.body.shippingAddress || {}),
       },
-    ],
-    success_url: `${req.protocol}://${req.get('host')}/orders`,
-    cancel_url: `${req.protocol}://${req.get('host')}/cart`,
-    customer_email: req.user.email,
-    client_reference_id: req.params.cartId,
-    metadata: { shippingAddress: JSON.stringify(req.body.shippingAddress) }, // Save shippingAddress as a string
-  });
+    });
 
-  res.status(200).json({ status: 'success', session });
+    res.status(200).json({ status: 'success', session });
+  } catch (error) {
+    next(new ApiError(`Stripe checkout session creation failed: ${error.message}`, 500));
+  }
 });
 
 // Helper function to create a card order after successful payment
@@ -204,6 +219,10 @@ const createCardOrder = async (session) => {
 
 // Stripe Webhook Handler
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
+  console.log("Webhook received");
+  console.log("Headers:", req.headers);
+  console.log("Raw Body:", req.rawBody.toString()); // Log the raw body content
+
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -215,8 +234,10 @@ exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   }
 
   if (event.type === 'checkout.session.completed') {
+    console.log("Checkout session completed event received");
     await createCardOrder(event.data.object);
   }
 
   res.status(200).json({ received: true });
 });
+
