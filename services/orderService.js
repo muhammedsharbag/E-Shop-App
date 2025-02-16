@@ -159,7 +159,7 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
         {
           price_data: {
             currency: 'egp',
-            unit_amount: totalOrderPrice * 100, // Convert to smallest currency unit (e.g., cents)
+            unit_amount: totalOrderPrice * 100, // Convert to smallest currency unit
             product_data: {
               name: req.user.name || 'Customer',
             },
@@ -172,6 +172,7 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
       customer_email: req.user.email,
       client_reference_id: req.params.cartId,
       metadata: {
+        // Store shippingAddress as a JSON string
         shippingAddress: JSON.stringify(req.body.shippingAddress || {}),
       },
     });
@@ -185,34 +186,43 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 // Helper function to create a card order after successful payment
 const createCardOrder = async (session) => {
   const cartId = session.client_reference_id;
-  const shippingAddress = session.metadata;
-  const oderPrice = session.display_items[0].amount / 100;
 
+  // Parse shipping address from metadata
+  const shippingAddress = session.metadata?.shippingAddress 
+    ? JSON.parse(session.metadata.shippingAddress) 
+    : {};
+
+  // Use amount_total if available; otherwise, fallback to display_items (if applicable)
+  const orderPrice = session.amount_total 
+    ? session.amount_total / 100 
+    : (session.display_items && session.display_items[0]?.amount / 100);
+
+  // Get the cart and user details
   const cart = await Cart.findById(cartId);
   const user = await User.findOne({ email: session.customer_email });
 
-  // 3) Create order with default paymentMethodType card
+  // 3) Create order with default paymentMethodType 'card'
   const order = await Order.create({
     user: user._id,
     cartItems: cart.cartItems,
     shippingAddress,
-    totalOrderPrice: oderPrice,
+    totalOrderPrice: orderPrice,
     isPaid: true,
     paidAt: Date.now(),
     paymentMethodType: 'card',
   });
 
-  // 4) After creating order, decrement product quantity, increment product sold
+  // 4) After creating the order, update product quantity and sold count
   if (order) {
     const bulkOption = cart.cartItems.map((item) => ({
       updateOne: {
         filter: { _id: item.product },
-        update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
+        update: { $inc: { quantity: -item.quantity, sold: item.quantity } },
       },
     }));
     await Product.bulkWrite(bulkOption, {});
 
-    // 5) Clear cart depend on cartId
+    // 5) Clear the cart based on cartId
     await Cart.findByIdAndDelete(cartId);
   }
 };
@@ -221,13 +231,17 @@ const createCardOrder = async (session) => {
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   console.log("Webhook received");
   console.log("Headers:", req.headers);
-  console.log("Raw Body:", req.rawBody.toString()); // Log the raw body content
+  console.log("Raw Body:", req.rawBody.toString()); // Use caution in production
 
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
   } catch (err) {
     console.error(`Webhook signature verification failed: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -240,4 +254,3 @@ exports.webhookCheckout = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ received: true });
 });
-
