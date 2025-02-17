@@ -192,11 +192,8 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 // Helper function to create a card order after successful payment
 const createCardOrder = async (session) => {
   const cartId = session.client_reference_id;
+  const shippingAddress = JSON.parse(session.metadata)
 
-  // Parse shipping address from metadata
-  const shippingAddress = session.metadata?.shippingAddress 
-    ? JSON.parse(session.metadata.shippingAddress)
-    : {};
 
   // Log the parsed shipping address to ensure it's correct
   console.log("Parsed Shipping Address:", shippingAddress);
