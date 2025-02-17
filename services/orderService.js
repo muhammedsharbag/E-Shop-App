@@ -192,14 +192,16 @@ const createCardOrder = async (session) => {
     ? JSON.parse(session.metadata.shippingAddress) 
     : {};
 
-  // Use amount_total if available; otherwise, fallback to display_items (if applicable)
-  const orderPrice = session.amount_total 
-    ? session.amount_total / 100 
-    : (session.display_items && session.display_items[0]?.amount / 100);
+  // Use session.amount_total for the order price, converting from the smallest currency unit
+  const orderPrice = session.amount_total ? session.amount_total / 100 : 0;
 
   // Get the cart and user details
   const cart = await Cart.findById(cartId);
   const user = await User.findOne({ email: session.customer_email });
+
+  if (!cart || !user) {
+    throw new Error('Cart or user not found');
+  }
 
   // 3) Create order with default paymentMethodType 'card'
   const order = await Order.create({
