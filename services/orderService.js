@@ -137,6 +137,9 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
       return next(new ApiError('Invalid cart ID format', 400));
     }
 
+    // Log the shipping address from the request
+    console.log("Shipping Address from Request:", req.body.shippingAddress);
+
     // 1) Get cart by ID
     const cart = await Cart.findById(req.params.cartId);
     if (!cart) {
@@ -177,6 +180,9 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
       },
     });
 
+    // Log the session metadata to verify the shipping address is stored
+    console.log("Session Metadata:", session.metadata);
+
     res.status(200).json({ status: 'success', session });
   } catch (error) {
     next(new ApiError(`Stripe checkout session creation failed: ${error.message}`, 500));
@@ -189,8 +195,11 @@ const createCardOrder = async (session) => {
 
   // Parse shipping address from metadata
   const shippingAddress = session.metadata?.shippingAddress 
-    ? JSON.parse(session.metadata.shippingAddress) 
+    ? JSON.parse(session.metadata.shippingAddress)
     : {};
+
+  // Log the parsed shipping address to ensure it's correct
+  console.log("Parsed Shipping Address:", shippingAddress);
 
   // Use session.amount_total for the order price, converting from the smallest currency unit
   const orderPrice = session.amount_total ? session.amount_total / 100 : 0;
@@ -203,7 +212,7 @@ const createCardOrder = async (session) => {
     throw new Error('Cart or user not found');
   }
 
-  // 3) Create order with default paymentMethodType 'card'
+  // Create order with default paymentMethodType 'card'
   const order = await Order.create({
     user: user._id,
     cartItems: cart.cartItems,
@@ -214,7 +223,7 @@ const createCardOrder = async (session) => {
     paymentMethodType: 'card',
   });
 
-  // 4) After creating the order, update product quantity and sold count
+  // After creating the order, update product quantity and sold count
   if (order) {
     const bulkOption = cart.cartItems.map((item) => ({
       updateOne: {
@@ -224,7 +233,7 @@ const createCardOrder = async (session) => {
     }));
     await Product.bulkWrite(bulkOption, {});
 
-    // 5) Clear the cart based on cartId
+    // Clear the cart based on cartId
     await Cart.findByIdAndDelete(cartId);
   }
 };
