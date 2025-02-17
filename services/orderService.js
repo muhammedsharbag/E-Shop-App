@@ -192,11 +192,11 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 // Helper function to create a card order after successful payment
 const createCardOrder = async (session) => {
   const cartId = session.client_reference_id;
-  const shippingAddress = JSON.parse(session.metadata)
+  const shippingAddress = session.metadata
 
 
   // Log the parsed shipping address to ensure it's correct
-  console.log("Parsed Shipping Address:", shippingAddress);
+  
 
   // Use session.amount_total for the order price, converting from the smallest currency unit
   const orderPrice = session.amount_total ? session.amount_total / 100 : 0;
