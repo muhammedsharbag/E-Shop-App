@@ -1,5 +1,5 @@
 const path = require("path");
-const bodyParser = require('body-parser');
+
 
 const express = require("express");
 const dotenv = require("dotenv");
@@ -28,7 +28,7 @@ app.use(compression())
 //checkout webhook
 app.post(
   '/webhook-checkout',
-  bodyParser.raw({ type: 'application/json' }),
+  express.raw({ type: 'application/json' }),
   webhookCheckout
 );
 app.use(express.static(path.join(__dirname, "uploads")));
