@@ -235,27 +235,26 @@ const createCardOrder = async (session) => {
 // Stripe Webhook Handler
 exports.webhookCheckout = asyncHandler(async (req, res, next) => {
   console.log("Webhook received");
-  console.log("Headers:", req.headers);
-  console.log("Raw Body:", req.rawBody.toString()); // Use caution in production
 
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      req.rawBody,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+      console.error(`Webhook signature verification failed: ${err.message}`);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   if (event.type === 'checkout.session.completed') {
-    console.log("Checkout session completed event received");
-    await createCardOrder(event.data.object);
-  }
+      console.log("Checkout session completed event received");
 
-  res.status(200).json({ received: true });
+      // Respond quickly to Stripe
+      res.status(200).json({ received: true });
+
+      // Process the order asynchronously
+      setImmediate(() => createCardOrder(event.data.object));
+  } else {
+      res.status(200).json({ received: true });
+  }
 });
