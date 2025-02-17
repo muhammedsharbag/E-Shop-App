@@ -151,13 +151,17 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
 
   const totalOrderPrice = cartPrice + taxPrice + shippingPrice;
 
-  // 3) Create stripe checkout session
+  // 3) Create stripe checkout session with updated fields
   const session = await stripe.checkout.sessions.create({
     line_items: [
       {
-        name: req.user.name,
-        amount: totalOrderPrice * 100,
-        currency: 'egp',
+        price_data: {
+          currency: 'egp',
+          product_data: {
+            name:  req.user.name,
+          },
+          unit_amount: totalOrderPrice * 100, // amount in cents
+        },
         quantity: 1,
       },
     ],
@@ -172,6 +176,7 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
   // 4) send session to response
   res.status(200).json({ status: 'success', session });
 });
+
 
 const createCardOrder = async (session) => {
   const cartId = session.client_reference_id;
