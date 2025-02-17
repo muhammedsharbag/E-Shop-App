@@ -25,6 +25,13 @@ app.use(cors());
 app.options('*',cors())
 // compress all responses
 app.use(compression())
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 //checkout webhook
 app.post(
   '/webhook-checkout',
