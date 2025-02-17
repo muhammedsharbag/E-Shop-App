@@ -38,7 +38,16 @@ exports.createCashOrder = asyncHandler(async (req, res, next) => {
   }
   res.status(201).json({ status: 'success', data: order });
 });
-
+exports.updateOrderToPaid = asyncHandler(async (req, res, next) => {
+  const order = await Order.findById(req.params.orderId);
+  if (!order) {
+    return next(new ApiError(`There is no order with the ID: ${req.params.orderId}`, 404));
+  }
+  order.isPaid = true;
+  order.paidAt = Date.now();
+  const updatedOrder = await order.save();
+  res.status(200).json({ status: 'success', data: updatedOrder });
+});
 exports.updateOrderToDelivered = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.orderId);
   if (!order) {
