@@ -1,13 +1,13 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const asyncHandler = require('express-async-handler');
+const { default: mongoose } = require('mongoose');
 const factory = require('./handlersFactory');
 const ApiError = require('../utils/apiError');
-
 const User = require('../models/userModel');
 const Product = require('../models/productModel');
 const Cart = require('../models/cartModel');
 const Order = require('../models/orderModel');
-const { default: mongoose } = require('mongoose');
+
 
 // @desc    Create a cash order
 // @route   POST /api/v1/orders/:cartId

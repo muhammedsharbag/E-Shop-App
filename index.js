@@ -28,10 +28,9 @@ app.use(compression())
 //checkout webhook
 app.post(
   '/webhook-checkout',
-  express.raw({ type: 'application/json' }), // This middleware is ONLY for the webhook route
+  bodyParser.raw({ type: 'application/json' }),
   webhookCheckout
 );
-
 app.use(express.static(path.join(__dirname, "uploads")));
 const logFormat = process.env.NODE_ENV === "production" ? "combined" : "dev";
 app.use(morgan(logFormat));
