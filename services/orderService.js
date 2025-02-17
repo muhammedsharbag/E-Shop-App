@@ -176,7 +176,7 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
       client_reference_id: req.params.cartId,
       metadata: {
         // Store shippingAddress as a JSON string
-        shippingAddress: JSON.stringify(req.body.shippingAddress || {}),
+        shippingAddress: JSON.stringify(req.body.shippingAddress ),
       },
     });
 
