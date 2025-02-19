@@ -47,11 +47,11 @@ exports.signupValidator = [
 ];
 
 exports.loginValidator = [
-  check("email")
-    .notEmpty()
-    .withMessage("Email required")
-    .isEmail()
-    .withMessage("Invalid email address"),
+   check("email")
+     .notEmpty()
+     .withMessage("Email required")
+     .isEmail()
+     .withMessage("Invalid email address"),
 
   check("password")
     .notEmpty()

@@ -15,22 +15,22 @@ exports.deleteOne = (Model) =>
     res.status(204).send();
   });
 
-exports.updateOne = (Model) =>
-  asyncHandler(async (req, res, next) => {
-    const document = await Model.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+  exports.updateOne = (Model) =>
+    asyncHandler(async (req, res, next) => {
+      const document = await Model.findByIdAndUpdate(req.params.id, req.body, {
+        new: true,
+      });
+  
+      if (!document) {
+        return next(
+          new ApiError(`No document for this id ${req.params.id}`, 404)
+        );
+      }
+      // Trigger "save" event when update document
+      document.save();
+      res.status(200).json({ data: document });
     });
-
-    if (!document) {
-      return next(
-        new ApiError(`No document for this id ${req.params.id}`, 404)
-      );
-    }
-    //Trigger "save" event when update document
-    document.save();
-    res.status(200).json({ data: document });
-  });
-
+  
 exports.createOne = (Model) =>
   asyncHandler(async (req, res) => {
     const newDoc = await Model.create(req.body);

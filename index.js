@@ -1,6 +1,11 @@
-const path = require('path');
-
 const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const { xss } = require('express-xss-sanitizer');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp = require('hpp');
+const { default: rateLimit } = require('express-rate-limit');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const cors = require('cors');
@@ -17,31 +22,51 @@ const { webhookCheckout } = require('./services/orderService');
 // Connect with db
 dbConnection();
 
-// express app
+// Express app
 const app = express();
 
-// Enable other domains to access your application
+// Enable CORS
 app.use(cors());
 app.options('*', cors());
 
-// compress all responses
+// Compress all responses
 app.use(compression());
 
-// Checkout webhook
+// Checkout webhook (needs raw body)
 app.post(
   '/webhook-checkout',
   express.raw({ type: 'application/json' }),
   webhookCheckout
 );
 
-// Middlewares
-app.use(express.json());
+// Middlewares to parse body data
+app.use(express.json({ limit: '50kb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());  // <-- Parse cookies
 app.use(express.static(path.join(__dirname, 'uploads')));
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
   console.log(`mode: ${process.env.NODE_ENV}`);
 }
+
+// Data sanitization
+app.use(mongoSanitize());
+app.use(xss());
+
+// Security middleware
+app.use(helmet());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  message: "Too many accounts created with this IP, please try again after an hour"
+});
+app.use("/api/v1/auth/forgotPassword", limiter);
+
+// Prevent HTTP Parameter Pollution
+app.use(hpp({ whitelist: ["price", "sold", "quantity", "ratingsQuantity", "ratingsAverage"] }));
 
 // Mount Routes
 mountRoutes(app);
@@ -50,19 +75,19 @@ app.all('*', (req, res, next) => {
   next(new ApiError(`Can't find this route: ${req.originalUrl}`, 400));
 });
 
-// Global error handling middleware for express
+// Global error handling middleware
 app.use(globalError);
 
 const PORT = process.env.PORT || 8000;
 const server = app.listen(PORT, () => {
-  console.log(`App running running on port ${PORT}`);
+  console.log(`App running on port ${PORT}`);
 });
 
-// Handle rejection outside express
+// Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error(`UnhandledRejection Errors: ${err.name} | ${err.message}`);
+  console.error(`Unhandled Rejection: ${err.name} | ${err.message}`);
   server.close(() => {
-    console.error(`Shutting down....`);
+    console.error(`Shutting down...`);
     process.exit(1);
   });
 });

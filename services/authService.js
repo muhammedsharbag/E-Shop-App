@@ -6,6 +6,7 @@ const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/apiError");
 const sendEmail = require("../utils/sendEmail");
 const createToken = require("../utils/createToken");
+const {sanitizeUser} = require("../utils/sanitizeData");
 const User = require("../models/userModel");
 
 // @desc    Signup
@@ -22,7 +23,7 @@ exports.signup = asyncHandler(async (req, res, next) => {
   // 2- Generate token
   const token = createToken(user._id);
 
-  res.status(201).json({ data: user, token });
+  res.status(201).json({ data: sanitizeUser(user), token });
 });
 
 // @desc    Login
